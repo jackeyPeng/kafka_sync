@@ -1,0 +1,7 @@
+/deps/include/
+/deps/libs/
+/deps/leveldb-1.18/
+/deps/snappy-1.1.1/
+/data/
+/log/
+/bin/kakfa_sync

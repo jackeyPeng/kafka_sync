@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<config>
+  <src>10.5.2.11:9092,10.5.2.12:9092,10.5.2.13:9092</src> <!-- consumer broker list -->
+  <dst>10.3.99.77:9092</dst> <!-- productor broker list-->
+  <redis>0.0.0.0:9999</redis>
+  <log>../config/kafka_sync_log.xml</log>
+  <leveldb>
+    <cache_size>1024</cache_size> <!-- in MB -->
+    <block_size>32</block_size> <!-- in KB -->
+    <write_buffer_size>64</write_buffer_size> <!--in MB -->
+    <max_open_files>500</max_open_files>
+    <dir>../data</dir>
+  </leveldb>
+  <topic id="snsgz" > <!-- sync topic -->
+    <partitions>0-31</partitions>
+  </topic>
+</config>
