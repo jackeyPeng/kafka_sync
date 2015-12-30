@@ -19,9 +19,10 @@ const (
 )
 
 const (
-	KAFKA_FLUSH_MSGS      = 1024
-	KAFKA_FLUSH_FREQUENCY = 50
-	KAFKA_FETCH_DEFAULT   = 512
+	KAFKA_FLUSH_MSGS            = 1024
+	KAFKA_FLUSH_FREQUENCY       = 50
+	KAFKA_FETCH_DEFAULT         = 512
+	KAFKA_CONSUMER_READ_TIMEOUT = 5
 )
 
 type Syncer interface {
@@ -115,7 +116,7 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 
 	//init consumer
 	consumer_config := sarama.NewConfig()
-	consumer_config.Net.ReadTimeout = 5 * time.Minute
+	consumer_config.Net.ReadTimeout = KAFKA_CONSUMER_READ_TIMEOUT * time.Minute
 	consumer_config.Consumer.Fetch.Default = KAFKA_FETCH_DEFAULT
 	consumer_config.Consumer.MaxProcessingTime = time.Second
 	consumer_config.Consumer.Return.Errors = true

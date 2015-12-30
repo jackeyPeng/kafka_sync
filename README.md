@@ -1,4 +1,4 @@
-[kafka_sync-kafka集群间的数据拷贝]((https://github.com/ivanabc/kafka_sync)
+[kafka_sync-kafka集群间的数据同步](https://github.com/ivanabc/kafka_sync)
 ============================
 
 ####Install
