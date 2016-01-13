@@ -19,10 +19,8 @@ const (
 )
 
 const (
-	KAFKA_FLUSH_MSGS            = 1024
-	KAFKA_FLUSH_FREQUENCY       = 50
-	KAFKA_FETCH_DEFAULT         = 512
-	KAFKA_CONSUMER_READ_TIMEOUT = 5
+	KAFKA_FLUSH_FREQUENCY       = 100 //ms
+	KAFKA_CONSUMER_READ_TIMEOUT = 5   //MINUTE
 )
 
 type Syncer interface {
@@ -71,20 +69,24 @@ func (this *SyncManager) Wait() {
 }
 
 type KafkaSync struct {
-	ldb          *LevelDB
-	consumerList string
-	producerList string
-	topic        string
-	partition    int32
+	ldb               *LevelDB
+	consumerList      string
+	producerList      string
+	topic             string
+	partition         int32
+	ConsumerFetchSize int32
+	ProducerFlushSize int
 }
 
-func NewKafkaSync(ldb *LevelDB, srcList, dstList, topic string, partition int32) *KafkaSync {
+func NewKafkaSync(ldb *LevelDB, config *xmlConfig, partition int32) *KafkaSync {
 	ret := &KafkaSync{
-		ldb:          ldb,
-		consumerList: srcList,
-		producerList: dstList,
-		topic:        topic,
-		partition:    partition,
+		ldb:               ldb,
+		consumerList:      config.SrcList,
+		producerList:      config.DstList,
+		topic:             config.Topic.Id,
+		partition:         partition,
+		ConsumerFetchSize: config.Kafka.ConsumerFetchSize,
+		ProducerFlushSize: config.Kafka.ProducerFlushSize,
 	}
 	return ret
 }
@@ -95,7 +97,7 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 
 	//init producer
 	producer_config := sarama.NewConfig()
-	producer_config.Producer.Flush.Messages = KAFKA_FLUSH_MSGS
+	producer_config.Producer.Flush.Messages = this.ProducerFlushSize
 	producer_config.Producer.Flush.Frequency = KAFKA_FLUSH_FREQUENCY * time.Millisecond
 	producer_config.Producer.Return.Successes = true
 	producer, err := sarama.NewAsyncProducer(strings.Split(this.producerList, ","), producer_config)
@@ -117,7 +119,7 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 	//init consumer
 	consumer_config := sarama.NewConfig()
 	consumer_config.Net.ReadTimeout = KAFKA_CONSUMER_READ_TIMEOUT * time.Minute
-	consumer_config.Consumer.Fetch.Default = KAFKA_FETCH_DEFAULT
+	consumer_config.Consumer.Fetch.Default = this.ConsumerFetchSize
 	consumer_config.Consumer.MaxProcessingTime = time.Second
 	consumer_config.Consumer.Return.Errors = true
 	consumerClient, cErr := sarama.NewClient(strings.Split(this.consumerList, ","), consumer_config)
@@ -157,7 +159,7 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 	if len(ret) > 0 {
 		offset, _ = strconv.ParseInt(string(ret), 10, 64)
 	} else {
-		offset = sarama.OffsetNewest
+		offset = sarama.OffsetOldest
 	}
 
 	l4g.Info("consume offset: %s %d %d", this.topic, this.partition, offset)

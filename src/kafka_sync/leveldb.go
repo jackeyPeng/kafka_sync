@@ -35,7 +35,7 @@ func NewLevelDB(conf *xmlConfig) (*LevelDB, error) {
 	roptions.SetFillCache(true)
 
 	woptions := levigo.NewWriteOptions()
-	woptions.SetSync(true)
+	woptions.SetSync(false)
 
 	db, err := levigo.Open(name, options)
 

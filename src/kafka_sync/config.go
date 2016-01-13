@@ -12,6 +12,7 @@ type xmlConfig struct {
 	RedisIp string     `xml:"redis"`
 	Log     string     `xml:"log"`
 	LevelDB xmlLevelDB `xml:"leveldb"`
+	Kafka   xmlKafka   `xml:"kafka"`
 	Topic   xmlTopic   `xml:"topic"`
 }
 
@@ -26,6 +27,11 @@ type xmlLevelDB struct {
 	WriteBufferSize int    `xml:"write_buffer_size"`
 	MaxOpenFiles    int    `xml:"max_open_files"`
 	Dir             string `xml:"dir"`
+}
+
+type xmlKafka struct {
+	ConsumerFetchSize int32 `xml:"consumer_fetch_size"`
+	ProducerFlushSize int   `xml:"producer_flush_size"`
 }
 
 func (this *xmlConfig) SplitPartition() (int32, int32) {

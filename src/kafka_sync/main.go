@@ -53,7 +53,7 @@ func main() {
 	l4g.Debug("partition: %d %d", index, MaxPartition)
 
 	for index <= MaxPartition {
-		sm.Create(NewKafkaSync(ldb, config.SrcList, config.DstList, config.Topic.Id, index))
+		sm.Create(NewKafkaSync(ldb, config, index))
 		index++
 	}
 
