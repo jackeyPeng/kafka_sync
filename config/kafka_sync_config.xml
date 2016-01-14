@@ -11,6 +11,10 @@
     <max_open_files>500</max_open_files>
     <dir>../data</dir>
   </leveldb>
+  <kafka>
+    <consumer_fetch_size>4096</consumer_fetch_size>
+    <producer_flush_size>4096</producer_flush_size>
+  </kafka>
   <topic id="snsgz" > <!-- sync topic -->
     <partitions>0-31</partitions>
   </topic>

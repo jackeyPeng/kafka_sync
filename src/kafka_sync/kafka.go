@@ -194,24 +194,28 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 	ticker := time.NewTicker(time.Minute)
 	lastOffset, newOffset := offset, offset
 
-	var producerChan chan<- *sarama.ProducerMessage
-	var producerMsg *sarama.ProducerMessage
-
 	for {
 		select {
 		case <-cc:
 			l4g.Info("manager close %s %d", this.topic, this.partition)
 			return
 		case msg := <-partitionConsumer.Messages():
-			producerMsg = &sarama.ProducerMessage{
+			producerMsg := &sarama.ProducerMessage{
 				Topic:    msg.Topic,
 				Key:      sarama.ByteEncoder(msg.Key),
 				Value:    sarama.ByteEncoder(msg.Value),
 				Metadata: msg.Offset,
 			}
-			producerChan = producer.Input()
-		case producerChan <- producerMsg:
-			producerChan = nil
+
+			select {
+			case producer.Input() <- producerMsg:
+			case err := <-producer.Errors():
+				l4g.Error("producer (%s %d) return error: %s", this.topic, this.partition, err.Error())
+				return
+			case <-cc:
+				l4g.Info("manager close %s %d", this.topic, this.partition)
+				return
+			}
 		case err := <-partitionConsumer.Errors():
 			if kerr, ok := err.Err.(sarama.KError); ok && kerr == sarama.ErrOffsetOutOfRange {
 				oldestOffset, _ := consumerClient.GetOffset(this.topic, this.partition, sarama.OffsetOldest)
