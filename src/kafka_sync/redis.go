@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/Shopify/sarama"
-	"github.com/fzzy/radix/redis"
-	"github.com/fzzy/radix/redis/resp"
+	"github.com/ivanabc/radix/redis"
+	"github.com/ivanabc/radix/redis/resp"
 
 	l4g "base/log4go"
 )
@@ -79,7 +79,9 @@ func RedisProcess(rw net.Conn, ldb *LevelDB, config *xmlConfig) {
 			}
 		} else {
 			l4g.Error("parse redis error: %s %v", rw.(*net.TCPConn).RemoteAddr(), infos)
-			client.WriteReq([]byte("-param error\r\n"), 0)
+			if err := client.WriteByte([]byte("-param error\r\n")); err != nil {
+				l4g.Error("redis write error: %s", err.Error())
+			}
 			return
 		}
 	}

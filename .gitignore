@@ -4,5 +4,6 @@
 /deps/snappy-1.1.1/
 /data/
 /log/
+/pkg/
 
 /bin/kafka_sync
