@@ -67,7 +67,7 @@ func RedisProcess(rw net.Conn, ldb *LevelDB, config *xmlConfig) {
 			}
 			index, MaxPartition := config.SplitPartition()
 			for index <= MaxPartition {
-				oldest, current, newest := getKafkaOffset(consumerClient, ldb, config.Topic.Id, index, config.SrcList)
+				oldest, current, newest := getKafkaOffset(consumerClient, ldb, config.Topic.Id, index)
 				ret[index] = fmt.Sprintf("%d_%d_%d", oldest, current, newest)
 				index++
 			}
@@ -87,7 +87,7 @@ func RedisProcess(rw net.Conn, ldb *LevelDB, config *xmlConfig) {
 	}
 }
 
-func getKafkaOffset(consumerClient sarama.Client, ldb *LevelDB, topic string, partition int32, consumerList string) (oldest int64, current int64, newest int64) {
+func getKafkaOffset(consumerClient sarama.Client, ldb *LevelDB, topic string, partition int32) (oldest int64, current int64, newest int64) {
 	oldest, _ = consumerClient.GetOffset(topic, partition, sarama.OffsetOldest)
 	newest, _ = consumerClient.GetOffset(topic, partition, sarama.OffsetNewest)
 
