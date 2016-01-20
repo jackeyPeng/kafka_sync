@@ -2,28 +2,49 @@
 
 SNAPPY="snappy-1.1.1"
 LEVELDB="leveldb-1.18"
-DIR=`pwd`
+DIR=$(pwd)
 
 export GOPATH=$DIR 
 
-if [ ! -d deps/include ] || [ ! -d deps/libs ] 
+if [ -d ${DIR}/deps/include ]
 then
-  rm -rf deps/include deps/libs deps/${SNAPPY} deps/${LEVELDB}
-  cd deps/ && mkdir libs 
-  tar -zxf ${SNAPPY}.tar.gz && cd ${SNAPPY} && ./configure --disable-shared --with-pic && make || exit 1
-  SNAPPY_PATH=`pwd`
-  cp ${SNAPPY_PATH}/.libs/libsnappy.a ../libs
-  cd ../libs
-  export LIBRARY_PATH=`pwd`
-  export C_INCLUDE_PATH=${SNAPPY_PATH}
-  export CPLUS_INCLUDE_PATH=${SNAPPY_PATH}
-  cd ../
-  tar -zxf ${LEVELDB}.tar.gz && cd ${LEVELDB} &&  make || exit 1
-  cp libleveldb.a ../libs
-  mv include ../
+  rm -rf ${DIR}/deps/include
 fi
 
-cd $DIR
+if [ -d ${DIR}/deps/libs ]
+then
+  rm -rf ${DIR}/deps/libs
+fi
 
+if [ -d ${DIR}/deps/${SNAPPY} ]
+then
+  rm -rf ${DIR}/deps/${SNAPPY}
+fi
+
+if [ -d ${DIR}/deps/${LEVELDB} ]
+then
+  rm -rf ${DIR}/deps/${LEVELDB}
+fi
+
+cd ${DIR}/deps && mkdir libs
+tar -zxf ${SNAPPY}.tar.gz 
+cd ${DIR}/deps/${SNAPPY} 
+./configure --disable-shared --with-pic && make || exit 1
+cp ${DIR}/deps/${SNAPPY}/.libs/libsnappy.a ${DIR}/deps/libs
+
+export LIBRARY_PATH=${DIR}/deps/libs
+export C_INCLUDE_PATH=${DIR}/deps/${SNAPPY}
+export CPLUS_INCLUDE_PATH=${DIR}/deps/${SNAPPY}
+
+cd ${DIR}/deps
+tar -zxf ${LEVELDB}.tar.gz 
+cd ${DIR}/deps/${LEVELDB} 
+make || exit 1
+cp libleveldb.a ${DIR}/deps/libs
+mv include ${DIR}/deps
+
+cd ${DIR}
+
+echo "go get..."
 go get github.com/Shopify/sarama
 go get github.com/ivanabc/radix/redis
