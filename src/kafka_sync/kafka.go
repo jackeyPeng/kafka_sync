@@ -116,6 +116,7 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 			if err := this.ldb.Put(leveldbKey, []byte(strconv.FormatInt(msg.Metadata.(int64), 10))); err != nil {
 				l4g.Error("leveldb put (%s %d %d) error: %s", this.topic, this.partition, msg.Metadata.(int64), err.Error())
 			}
+			l4g.Debug("write %s %d offset: %d", this.topic, this.partition, msg.Metadata.(int64))
 		}
 		l4g.Info("producer close: %s %d", this.topic, this.partition)
 	}()
@@ -219,28 +220,8 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 				Metadata: msg.Offset,
 			}
 			producerMsgs = producer.Input()
-
-		/*
-			for has := true; has; {
-				select {
-				case producer.Input() <- producerMsg:
-					has = false
-				case err := <-producer.Errors():
-					l4g.Error("producer (%s %d) return error: %s", this.topic, this.partition, err.Error())
-					return
-				case pmsg := <-producer.Successes():
-					newOffset = pmsg.Metadata.(int64)
-					if err := this.ldb.Put(leveldbKey, []byte(strconv.FormatInt(newOffset, 10))); err != nil {
-						l4g.Error("leveldb put (%s %d %d) error: %s", this.topic, this.partition, newOffset, err.Error())
-						return
-					}
-				case <-cc:
-					l4g.Info("manager close %s %d", this.topic, this.partition)
-					return
-				}
-			}
-		*/
 		case producerMsgs <- producerMsg:
+			l4g.Debug("read %s %d offset: %d", this.topic, this.partition, producerMsg.Metadata.(int64))
 			consumerMsgs = partitionConsumer.Messages()
 			producerMsgs = nil
 			producerMsg = nil
@@ -258,6 +239,7 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 				l4g.Error("leveldb put (%s %d %d) error: %s", this.topic, this.partition, newOffset, err.Error())
 				return
 			}
+			l4g.Debug("write %s %d offset: %d", this.topic, this.partition, newOffset)
 		case err := <-producer.Errors():
 			l4g.Error("producer (%s %d) return error: %s", this.topic, this.partition, err.Error())
 			return
