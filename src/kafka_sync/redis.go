@@ -20,7 +20,7 @@ func RedisService(ldb *LevelDB, config *xmlConfig) {
 	}
 	l, e := net.ListenTCP("tcp", addr)
 	if e != nil {
-		panic(err.Error())
+		panic(e.Error())
 	}
 
 	defer l.Close()
@@ -31,7 +31,7 @@ func RedisService(ldb *LevelDB, config *xmlConfig) {
 			if ne, ok := e.(net.Error); ok && ne.Temporary() {
 				continue
 			}
-			l4g.Error("redis server accept tcp error: %s", err.Error())
+			l4g.Error("redis server accept tcp error: %s", e.Error())
 			return
 		}
 		go RedisProcess(rw, ldb, config)

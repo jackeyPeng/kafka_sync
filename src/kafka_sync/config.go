@@ -30,8 +30,10 @@ type xmlLevelDB struct {
 }
 
 type xmlKafka struct {
-	ConsumerFetchSize int32 `xml:"consumer_fetch_size"`
-	ProducerFlushSize int   `xml:"producer_flush_size"`
+	ConsumerFetchSize      int32 `xml:"consumer_fetch_size"`
+	ConsumerFetchMinSize   int32 `xml:"consumer_fetch_min_size"`
+	ConsumerNetReadTimeout int   `xml:"consumer_net_read_timeout"`
+	ProducerFlushSize      int   `xml:"producer_flush_size"`
 }
 
 func (this *xmlConfig) SplitPartition() (int32, int32) {

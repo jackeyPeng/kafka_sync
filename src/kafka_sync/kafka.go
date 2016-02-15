@@ -19,8 +19,8 @@ const (
 )
 
 const (
-	KAFKA_FLUSH_FREQUENCY       = 100 //ms
-	KAFKA_CONSUMER_READ_TIMEOUT = 5   //MINUTE
+	KAFKA_FLUSH_FREQUENCY = 100 //ms
+	//KAFKA_CONSUMER_KEEPALIVE    = 20  //second
 )
 
 type Syncer interface {
@@ -39,7 +39,7 @@ func NewSyncManager() *SyncManager {
 	}
 }
 
-func (this *SyncManager) Add(delta int) {
+func (this *SyncManager) AddWaitGroup(delta int) {
 	this.wg.Add(delta)
 }
 
@@ -69,24 +69,28 @@ func (this *SyncManager) Wait() {
 }
 
 type KafkaSync struct {
-	ldb               *LevelDB
-	consumerList      string
-	producerList      string
-	topic             string
-	partition         int32
-	ConsumerFetchSize int32
-	ProducerFlushSize int
+	ldb                    *LevelDB
+	consumerList           string
+	producerList           string
+	topic                  string
+	partition              int32
+	ConsumerFetchSize      int32
+	ConsumerFetchMinSize   int32
+	ConsumerNetReadTimeout int
+	ProducerFlushSize      int
 }
 
 func NewKafkaSync(ldb *LevelDB, config *xmlConfig, partition int32) *KafkaSync {
 	ret := &KafkaSync{
-		ldb:               ldb,
-		consumerList:      config.SrcList,
-		producerList:      config.DstList,
-		topic:             config.Topic.Id,
-		partition:         partition,
-		ConsumerFetchSize: config.Kafka.ConsumerFetchSize,
-		ProducerFlushSize: config.Kafka.ProducerFlushSize,
+		ldb:                    ldb,
+		consumerList:           config.SrcList,
+		producerList:           config.DstList,
+		topic:                  config.Topic.Id,
+		partition:              partition,
+		ConsumerFetchSize:      config.Kafka.ConsumerFetchSize,
+		ConsumerFetchMinSize:   config.Kafka.ConsumerFetchMinSize,
+		ConsumerNetReadTimeout: config.Kafka.ConsumerNetReadTimeout,
+		ProducerFlushSize:      config.Kafka.ProducerFlushSize,
 	}
 	return ret
 }
@@ -118,8 +122,10 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 
 	//init consumer
 	consumer_config := sarama.NewConfig()
-	consumer_config.Net.ReadTimeout = KAFKA_CONSUMER_READ_TIMEOUT * time.Minute
+	//consumer_config.Net.KeepAlive = KAFKA_CONSUMER_KEEPALIVE * time.Second
 	consumer_config.Consumer.Fetch.Default = this.ConsumerFetchSize
+	consumer_config.Consumer.Fetch.Min = this.ConsumerFetchMinSize
+	consumer_config.Net.ReadTimeout = time.Duration(this.ConsumerNetReadTimeout) * time.Minute
 	consumer_config.Consumer.MaxProcessingTime = time.Second
 	consumer_config.Consumer.Return.Errors = true
 	consumerClient, cErr := sarama.NewClient(strings.Split(this.consumerList, ","), consumer_config)
@@ -193,29 +199,51 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 
 	ticker := time.NewTicker(time.Minute)
 	lastOffset, newOffset := offset, offset
+	consumerMsgs := partitionConsumer.Messages()
+	var producerMsgs chan<- *sarama.ProducerMessage
+	var producerMsg *sarama.ProducerMessage
+
+	l4g.Info("%s %d start", this.topic, this.partition)
 
 	for {
 		select {
 		case <-cc:
 			l4g.Info("manager close %s %d", this.topic, this.partition)
 			return
-		case msg := <-partitionConsumer.Messages():
-			producerMsg := &sarama.ProducerMessage{
+		case msg := <-consumerMsgs:
+			consumerMsgs = nil
+			producerMsg = &sarama.ProducerMessage{
 				Topic:    msg.Topic,
 				Key:      sarama.ByteEncoder(msg.Key),
 				Value:    sarama.ByteEncoder(msg.Value),
 				Metadata: msg.Offset,
 			}
+			producerMsgs = producer.Input()
 
-			select {
-			case producer.Input() <- producerMsg:
-			case err := <-producer.Errors():
-				l4g.Error("producer (%s %d) return error: %s", this.topic, this.partition, err.Error())
-				return
-			case <-cc:
-				l4g.Info("manager close %s %d", this.topic, this.partition)
-				return
+		/*
+			for has := true; has; {
+				select {
+				case producer.Input() <- producerMsg:
+					has = false
+				case err := <-producer.Errors():
+					l4g.Error("producer (%s %d) return error: %s", this.topic, this.partition, err.Error())
+					return
+				case pmsg := <-producer.Successes():
+					newOffset = pmsg.Metadata.(int64)
+					if err := this.ldb.Put(leveldbKey, []byte(strconv.FormatInt(newOffset, 10))); err != nil {
+						l4g.Error("leveldb put (%s %d %d) error: %s", this.topic, this.partition, newOffset, err.Error())
+						return
+					}
+				case <-cc:
+					l4g.Info("manager close %s %d", this.topic, this.partition)
+					return
+				}
 			}
+		*/
+		case producerMsgs <- producerMsg:
+			consumerMsgs = partitionConsumer.Messages()
+			producerMsgs = nil
+			producerMsg = nil
 		case err := <-partitionConsumer.Errors():
 			if kerr, ok := err.Err.(sarama.KError); ok && kerr == sarama.ErrOffsetOutOfRange {
 				oldestOffset, _ := consumerClient.GetOffset(this.topic, this.partition, sarama.OffsetOldest)

@@ -13,6 +13,8 @@
   </leveldb>
   <kafka>
     <consumer_fetch_size>4096</consumer_fetch_size>
+    <consumer_fetch_min_size>100</consumer_fetch_min_size>
+    <consumer_net_read_timeout>5</consumer_net_read_timeout><!-- minute -->
     <producer_flush_size>4096</producer_flush_size>
   </kafka>
   <topic id="snsgz" > <!-- sync topic -->

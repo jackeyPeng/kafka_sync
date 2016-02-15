@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"runtime"
@@ -14,6 +15,8 @@ import (
 	"github.com/Shopify/sarama"
 
 	l4g "base/log4go"
+
+	_ "net/http/pprof"
 )
 
 var configFile = flag.String("config", "../config/kafka_sync_config.xml", "")
@@ -33,7 +36,14 @@ func main() {
 	}
 
 	l4g.LoadConfiguration(config.Log)
-	defer l4g.Close()
+	defer func() {
+		l4g.Info("server stop...")
+		l4g.Close()
+	}()
+
+	go func() {
+		l4g.Error(http.ListenAndServe(":19999", nil))
+	}()
 
 	ldb, err := NewLevelDB(config)
 	if err != nil {
@@ -43,12 +53,12 @@ func main() {
 
 	index, MaxPartition := config.SplitPartition()
 
-	sarama.Logger = log.New(os.Stdout, "[Sarama] ", log.LstdFlags)
+	sarama.Logger = log.New(os.Stdout, "[Ivan] ", log.LstdFlags)
 
 	sm := NewSyncManager()
 	defer sm.Wait()
 
-	sm.Add(int(MaxPartition - index + 1))
+	sm.AddWaitGroup(int(MaxPartition - index + 1))
 
 	l4g.Debug("partition: %d %d", index, MaxPartition)
 
