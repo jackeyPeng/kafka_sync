@@ -16,6 +16,7 @@
     <consumer_fetch_min_size>100</consumer_fetch_min_size>
     <consumer_net_read_timeout>5</consumer_net_read_timeout><!-- minute -->
     <producer_flush_size>4096</producer_flush_size>
+    <producer_flush_frequency>10</producer_flush_frequency> <!-- ms -->
   </kafka>
   <topic id="snsgz" > <!-- sync topic -->
     <partitions>0-31</partitions>

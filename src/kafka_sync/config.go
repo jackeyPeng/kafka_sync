@@ -34,6 +34,7 @@ type xmlKafka struct {
 	ConsumerFetchMinSize   int32 `xml:"consumer_fetch_min_size"`
 	ConsumerNetReadTimeout int   `xml:"consumer_net_read_timeout"`
 	ProducerFlushSize      int   `xml:"producer_flush_size"`
+	ProducerFlushFrequency int   `xml:"producer_flush_frequency"`
 }
 
 func (this *xmlConfig) SplitPartition() (int32, int32) {

@@ -18,11 +18,6 @@ const (
 	STATE_CLOSE = 1
 )
 
-const (
-	KAFKA_FLUSH_FREQUENCY = 100 //ms
-	//KAFKA_CONSUMER_KEEPALIVE    = 20  //second
-)
-
 type Syncer interface {
 	Process(<-chan struct{})
 }
@@ -78,6 +73,7 @@ type KafkaSync struct {
 	ConsumerFetchMinSize   int32
 	ConsumerNetReadTimeout int
 	ProducerFlushSize      int
+	ProducerFlushFrequency int
 }
 
 func NewKafkaSync(ldb *LevelDB, config *xmlConfig, partition int32) *KafkaSync {
@@ -91,6 +87,7 @@ func NewKafkaSync(ldb *LevelDB, config *xmlConfig, partition int32) *KafkaSync {
 		ConsumerFetchMinSize:   config.Kafka.ConsumerFetchMinSize,
 		ConsumerNetReadTimeout: config.Kafka.ConsumerNetReadTimeout,
 		ProducerFlushSize:      config.Kafka.ProducerFlushSize,
+		ProducerFlushFrequency: config.Kafka.ProducerFlushFrequency,
 	}
 	return ret
 }
@@ -102,7 +99,7 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 	//init producer
 	producer_config := sarama.NewConfig()
 	producer_config.Producer.Flush.Messages = this.ProducerFlushSize
-	producer_config.Producer.Flush.Frequency = KAFKA_FLUSH_FREQUENCY * time.Millisecond
+	producer_config.Producer.Flush.Frequency = time.Duration(this.ProducerFlushFrequency) * time.Millisecond
 	producer_config.Producer.Return.Successes = true
 	producer, err := sarama.NewAsyncProducer(strings.Split(this.producerList, ","), producer_config)
 	if err != nil {
@@ -123,7 +120,6 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 
 	//init consumer
 	consumer_config := sarama.NewConfig()
-	//consumer_config.Net.KeepAlive = KAFKA_CONSUMER_KEEPALIVE * time.Second
 	consumer_config.Consumer.Fetch.Default = this.ConsumerFetchSize
 	consumer_config.Consumer.Fetch.Min = this.ConsumerFetchMinSize
 	consumer_config.Net.ReadTimeout = time.Duration(this.ConsumerNetReadTimeout) * time.Minute
