@@ -3,17 +3,14 @@ package main
 import (
 	"fmt"
 	"net"
-	"strconv"
-	"strings"
 
-	"github.com/Shopify/sarama"
 	"github.com/ivanabc/radix/redis"
 	"github.com/ivanabc/radix/redis/resp"
 
 	l4g "base/log4go"
 )
 
-func RedisService(ldb *LevelDB, config *xmlConfig) {
+func RedisService(config *xmlConfig, sm *SyncManager) {
 	addr, err := net.ResolveTCPAddr("tcp", config.RedisIp)
 	if err != nil {
 		panic(err.Error())
@@ -34,11 +31,11 @@ func RedisService(ldb *LevelDB, config *xmlConfig) {
 			l4g.Error("redis server accept tcp error: %s", e.Error())
 			return
 		}
-		go RedisProcess(rw, ldb, config)
+		go RedisProcess(rw, config, sm)
 	}
 }
 
-func RedisProcess(rw net.Conn, ldb *LevelDB, config *xmlConfig) {
+func RedisProcess(rw net.Conn, config *xmlConfig, sm *SyncManager) {
 	l4g.Info("redis client init: %s", rw.(*net.TCPConn).RemoteAddr())
 	client := redis.NewClient(rw)
 	defer func() {
@@ -60,20 +57,20 @@ func RedisProcess(rw net.Conn, ldb *LevelDB, config *xmlConfig) {
 		if v == "offset" {
 			//ABOUT OFFSET
 			ret := make(map[int32]string)
-			consumerClient, cErr := sarama.NewClient(strings.Split(config.SrcList, ","), nil)
-			if cErr != nil {
-				l4g.Error("new client error: %s %s", config.SrcList, cErr.Error())
-				return
+			skafka := &SourceKafka{
+				config: &config.Source,
 			}
-			index, MaxPartition := config.SplitPartition()
+			skafka.Init(nil, false)
+			index, MaxPartition := config.SplitSourceTopicPartition()
 			for index <= MaxPartition {
-				oldest, current, newest := getKafkaOffset(consumerClient, ldb, config.Topic.Id, index)
-				ret[index] = fmt.Sprintf("%d_%d_%d", oldest, current, newest)
+				skafka.PartitionIndex = index
+				syn := sm.CreateSync(skafka, config)
+				oldest, newest := skafka.GetKafkaOffset()
+				current, _ := skafka.GetLevelDBOffset(syn.GetLevelDBKey())
+				ret[index] = fmt.Sprintf("%d_%d_%d", oldest, current, newest-1)
 				index++
 			}
-			if err := consumerClient.Close(); err != nil {
-				l4g.Error("close client error: %s", err.Error())
-			}
+			skafka.Close()
 			if err := resp.WriteArbitraryAsFlattenedStrings(rw, ret); err != nil {
 				l4g.Error("write msg error: %s %v", err.Error(), ret)
 			}
@@ -85,22 +82,4 @@ func RedisProcess(rw net.Conn, ldb *LevelDB, config *xmlConfig) {
 			return
 		}
 	}
-}
-
-func getKafkaOffset(consumerClient sarama.Client, ldb *LevelDB, topic string, partition int32) (oldest int64, current int64, newest int64) {
-	oldest, _ = consumerClient.GetOffset(topic, partition, sarama.OffsetOldest)
-	newest, _ = consumerClient.GetOffset(topic, partition, sarama.OffsetNewest)
-
-	leveldbKey := []byte(fmt.Sprintf("%s_%d", topic, partition))
-	ret, err := ldb.Get(leveldbKey)
-	if err != nil {
-		l4g.Error("leveldb get (%s %d) error: %s", topic, partition, err.Error())
-		return
-	}
-	if len(ret) > 0 {
-		current, _ = strconv.ParseInt(string(ret), 10, 64)
-	} else {
-		current = sarama.OffsetNewest
-	}
-	return
 }

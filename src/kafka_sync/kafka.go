@@ -1,5 +1,6 @@
 package main
 
+/*
 import (
 	"fmt"
 	"strconv"
@@ -245,3 +246,4 @@ func (this *KafkaSync) Process(cc <-chan struct{}) {
 		}
 	}
 }
+*/

@@ -19,6 +19,8 @@ import (
 	_ "net/http/pprof"
 )
 
+var gldb *LevelDB
+
 var configFile = flag.String("config", "../config/kafka_sync_config.xml", "")
 
 func main() {
@@ -41,6 +43,13 @@ func main() {
 		l4g.Close()
 	}()
 
+	if !config.Check() {
+		l4g.Info("config error")
+		return
+	}
+
+	l4g.Debug("config %v", config)
+
 	go func() {
 		l4g.Error(http.ListenAndServe(":19999", nil))
 	}()
@@ -49,25 +58,33 @@ func main() {
 	if err != nil {
 		return
 	}
-	defer ldb.Close()
+	gldb = ldb
+	defer gldb.Close()
 
-	index, MaxPartition := config.SplitPartition()
+	index, MaxPartition := config.SplitSourceTopicPartition()
 
 	sarama.Logger = log.New(os.Stdout, "[Ivan] ", log.LstdFlags)
 
 	sm := NewSyncManager()
 	defer sm.Wait()
 
+	/**************************register******************/
+	//register kafka
+	sm.RegisterSync(config.Destination.Kafka.Name, NewSyncKafka)
+	//register hbase
+	sm.RegisterSync(config.Destination.Hbase.Name, NewSyncHbase)
+	/*****************************************************/
+
 	sm.AddWaitGroup(int(MaxPartition - index + 1))
 
 	l4g.Debug("partition: %d %d", index, MaxPartition)
 
 	for index <= MaxPartition {
-		sm.Create(NewKafkaSync(ldb, config, index))
+		sm.Create(config, index)
 		index++
 	}
 
-	go RedisService(ldb, config)
+	go RedisService(config, sm)
 
 	sign := make(chan os.Signal, 1)
 	signal.Notify(sign, os.Interrupt, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP)
