@@ -89,6 +89,7 @@ type xmlDestinationHbase struct {
 	Brokers     string `xml:"brokers"`
 	Table       []byte `xml:"table"`
 	Family      []byte `xml:"family"`
+	Qualifier   []byte `xml:"qualifier"`
 	MaxMergeMsg int    `xml:"max_merge_msg"`
 	Filter      string `xml:"filter"`
 }

@@ -32,6 +32,7 @@
       <brokers></brokers>
       <table></table>
       <family></family>
+      <qualifier></qualifier>
       <max_merge_msg></max_merge_msg>
       <filter></filter>
     </hbase>

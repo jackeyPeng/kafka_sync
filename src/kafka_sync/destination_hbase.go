@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"strconv"
-	"strings"
 	"time"
 
 	"base/hbase"
@@ -18,9 +16,14 @@ const (
 	TICKER_MAX_COUNT = 6
 )
 
-var (
-	TCV_QUALIFIER = []byte("")
-)
+type Hbaser interface {
+	RowKey([]byte) string
+	EncodeTPut([]byte, []byte) *hbase.TPut
+}
+
+type MyHbase struct {
+	cfg *xmlDestinationHbase
+}
 
 type SyncHbase struct {
 	src        *SourceKafka
@@ -28,6 +31,7 @@ type SyncHbase struct {
 
 	config     *xmlDestinationHbase
 	thriftAddr string
+	Hbaser
 }
 
 func NewSyncHbase(src *SourceKafka, config *xmlConfig) Syncer {
@@ -37,6 +41,9 @@ func NewSyncHbase(src *SourceKafka, config *xmlConfig) Syncer {
 	}
 	ret.leveldbKey = []byte(fmt.Sprintf("%s_%d", ret.config.Name, ret.src.PartitionIndex))
 	ret.thriftAddr = ret.config.GetRandomAddr()
+	ret.Hbaser = &MyHbase{
+		cfg: ret.config,
+	}
 	return ret
 }
 
@@ -111,32 +118,6 @@ func (this *SyncHbase) Process(cc <-chan struct{}) {
 }
 
 func (this *SyncHbase) Close() {}
-
-func (this *SyncHbase) RowKey(info []byte) string {
-	ss := strings.Split(string(info), ",")
-	if len(ss) >= 28 {
-		if strings.Index(ss[0], this.config.Filter) == 0 {
-			tm, _ := strconv.ParseUint(ss[27], 10, 64)
-			res := math.MaxUint64 - tm
-			rowKey := fmt.Sprintf("%s_%s_%d", ss[0], ss[3], res)
-			return rowKey
-		}
-	}
-	return ""
-}
-
-func (this *SyncHbase) EncodeTPut(rowKey, value []byte) *hbase.TPut {
-	tc := &hbase.TColumnValue{
-		Family:    this.config.Family,
-		Qualifier: TCV_QUALIFIER,
-		Value:     value,
-	}
-	tp := &hbase.TPut{
-		Row:          rowKey,
-		ColumnValues: []*hbase.TColumnValue{tc},
-	}
-	return tp
-}
 
 func (this *SyncHbase) PutHbase(tt *hbase.THBaseServiceClient, tps []*hbase.TPut, offset int64) bool {
 	err := tt.PutMultiple(this.config.Table, tps)
