@@ -67,11 +67,25 @@ type xmlConfig struct {
 	Destination xmlDestination `xml:"destination"`
 }
 
+func (this *xmlConfig) GetDestinationName() string {
+	//kafka
+	if this.Destination.Kafka.State == "open" {
+		return this.Destination.Kafka.Name
+	}
+	//hbase
+	if this.Destination.Hbase.State == "open" {
+		return this.Destination.Hbase.Name
+	}
+	//...
+	return ""
+}
+
 type xmlDestination struct {
 	Kafka xmlDestinationKafka `xml:"kafka"`
 	Hbase xmlDestinationHbase `xml:"hbase"`
 }
 
+//kafka config
 type xmlDestinationKafka struct {
 	State string `xml:"state,attr"`
 	Name  string `xml:"name"`
@@ -82,6 +96,7 @@ type xmlDestinationKafka struct {
 	ProducerFlushFrequency int    `xml:"producer_flush_frequency"`
 }
 
+//hbase config
 type xmlDestinationHbase struct {
 	State string `xml:"state,attr"`
 	Name  string `xml:"name"`
@@ -97,17 +112,4 @@ type xmlDestinationHbase struct {
 func (this *xmlDestinationHbase) GetRandomAddr() string {
 	ss := strings.Split(this.Brokers, ",")
 	return ss[rand.Intn(len(ss))]
-}
-
-func (this *xmlConfig) GetDestinationName() string {
-	//kafka
-	if this.Destination.Kafka.State == "open" {
-		return this.Destination.Kafka.Name
-	}
-	//hbase
-	if this.Destination.Hbase.State == "open" {
-		return this.Destination.Hbase.Name
-	}
-	//...
-	return ""
 }
