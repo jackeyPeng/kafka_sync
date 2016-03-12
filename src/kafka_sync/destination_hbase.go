@@ -21,10 +21,6 @@ type Hbaser interface {
 	EncodeTPut([]byte, []byte) *hbase.TPut
 }
 
-type MyHbase struct {
-	cfg *xmlDestinationHbase
-}
-
 type SyncHbase struct {
 	src        *SourceKafka
 	leveldbKey []byte
@@ -41,9 +37,6 @@ func NewSyncHbase(src *SourceKafka, config *xmlConfig) Syncer {
 	}
 	ret.leveldbKey = []byte(fmt.Sprintf("%s_%d", ret.config.Name, ret.src.PartitionIndex))
 	ret.thriftAddr = ret.config.GetRandomAddr()
-	ret.Hbaser = &MyHbase{
-		cfg: ret.config,
-	}
 	return ret
 }
 
@@ -128,7 +121,7 @@ func (this *SyncHbase) PutHbase(tt *hbase.THBaseServiceClient, tps []*hbase.TPut
 		case *hbase.TIllegalArgument:
 			l4g.Error("put hbase TIllegalArgument: %s", v.GetMessage())
 		default:
-			l4g.Error("put hbase error: %d %s", err.Error())
+			l4g.Error("put hbase error: %s", err.Error())
 		}
 		return false
 	} else {

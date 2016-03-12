@@ -72,7 +72,7 @@ func main() {
 	//register kafka
 	sm.RegisterSync(config.Destination.Kafka.Name, NewSyncKafka)
 	//register hbase
-	sm.RegisterSync(config.Destination.Hbase.Name, NewSyncHbase)
+	sm.RegisterSync(config.Destination.Hbase.Name, NewSyncMyHbase)
 	/*****************************************************/
 
 	sm.AddWaitGroup(int(MaxPartition - index + 1))

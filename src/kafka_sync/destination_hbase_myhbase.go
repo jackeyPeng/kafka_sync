@@ -9,6 +9,19 @@ import (
 	"base/hbase"
 )
 
+type MyHbase struct {
+	cfg *xmlDestinationHbase
+}
+
+func NewSyncMyHbase(src *SourceKafka, config *xmlConfig) Syncer {
+	syn := NewSyncHbase(src, config)
+	my := &MyHbase{
+		cfg: &config.Destination.Hbase,
+	}
+	syn.(*SyncHbase).Hbaser = my
+	return syn
+}
+
 func (this *MyHbase) RowKey(msgInfo []byte) string {
 	ss := strings.Split(string(msgInfo), ",")
 	if len(ss) >= 28 {
