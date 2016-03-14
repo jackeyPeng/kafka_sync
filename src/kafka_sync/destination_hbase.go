@@ -12,10 +12,6 @@ import (
 	l4g "base/log4go"
 )
 
-const (
-	TICKER_MAX_COUNT = 6
-)
-
 type Hbaser interface {
 	RowKey([]byte) string
 	EncodeTPut([]byte, []byte) *hbase.TPut
@@ -61,11 +57,11 @@ func (this *SyncHbase) Process(cc <-chan struct{}) {
 
 	offset, _ := this.src.GetLevelDBOffset(this.leveldbKey)
 	l4g.Debug("sync hbase leveldb offset: %s %s %d", this.thriftAddr, this.leveldbKey, offset)
-	ticker := time.NewTicker(10 * time.Second)
+	ticker_hbase := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(time.Minute)
 	tps := make([]*hbase.TPut, 0, this.config.MaxMergeMsg)
-	count := 0
-	tickerCount := 0
-	lastPutCount, putCount := 0, 0
+	var count int
+	var lastPutCount, putCount int64
 
 	for {
 		select {
@@ -73,19 +69,8 @@ func (this *SyncHbase) Process(cc <-chan struct{}) {
 			l4g.Info("manager hbase close %d", this.src.PartitionIndex)
 			return
 		case <-ticker.C:
-			if count > 0 {
-				if !this.PutHbase(tt, tps, offset) {
-					return
-				}
-				count = 0
-				tps = tps[0:0]
-			}
-			tickerCount++
-			if tickerCount == TICKER_MAX_COUNT {
-				l4g.Info("consume offset: %s %d %d", this.src.Topic(), this.src.PartitionIndex, putCount-lastPutCount)
-				lastPutCount = putCount
-				tickerCount = 0
-			}
+			l4g.Info("consume offset: %s %d %d", this.src.Topic(), this.src.PartitionIndex, putCount-lastPutCount)
+			lastPutCount = putCount
 		case err := <-this.src.PartitionConsumer.Errors():
 			if kerr, ok := err.Err.(sarama.KError); ok && kerr == sarama.ErrOffsetOutOfRange {
 				l4g.Error("partition consumer (%s %d) return error: %s", this.src.Topic(), this.src.PartitionIndex, err.Error())
@@ -103,8 +88,24 @@ func (this *SyncHbase) Process(cc <-chan struct{}) {
 				if !this.PutHbase(tt, tps, offset) {
 					return
 				}
+				if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(offset, 10))); err != nil {
+					l4g.Error("leveldb put %s %d error: %s", this.leveldbKey, offset, err.Error())
+					return
+				}
 				count = 0
 				tps = tps[0:0]
+			}
+		case <-ticker_hbase.C:
+			if count > 0 {
+				if !this.PutHbase(tt, tps, offset) {
+					return
+				}
+				count = 0
+				tps = tps[0:0]
+			}
+			if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(offset, 10))); err != nil {
+				l4g.Error("leveldb put %s %d error: %s", this.leveldbKey, offset, err.Error())
+				return
 			}
 		}
 	}
@@ -124,11 +125,6 @@ func (this *SyncHbase) PutHbase(tt *hbase.THBaseServiceClient, tps []*hbase.TPut
 			l4g.Error("put hbase error: %s", err.Error())
 		}
 		return false
-	} else {
-		if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(offset, 10))); err != nil {
-			l4g.Error("leveldb put %s %d error: %s", this.leveldbKey, offset, err.Error())
-			return false
-		}
 	}
 	return true
 }
