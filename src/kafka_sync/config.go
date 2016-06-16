@@ -1,9 +1,7 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
-	"strconv"
 	"strings"
 )
 
@@ -16,8 +14,17 @@ type xmlSource struct {
 }
 
 type xmlTopic struct {
-	Id         string `xml:"id"`
-	Partitions string `xml:"partitions"`
+	Id         string        `xml:"id"`
+	Partitions xmlPartitions `xml:"partitions"`
+}
+
+type xmlPartitions struct {
+	Infos []xmlPartition `xml:"partition"`
+}
+
+type xmlPartition struct {
+	Index  int32 `xml:"index,attr"`
+	Offset int64 `xml:",chardata"`
 }
 
 type xmlLevelDB struct {
@@ -28,33 +35,18 @@ type xmlLevelDB struct {
 	Dir             string `xml:"dir"`
 }
 
-func (this *xmlConfig) SplitSourceTopicPartition() (int32, int32) {
-	ss := strings.Split(this.Source.Topic.Partitions, "-")
-	if len(ss) != 2 {
-		panic(fmt.Sprintf("config topic partition error: %s", this.Source.Topic.Partitions))
-	}
-	min, min_err := strconv.Atoi(ss[0])
-	if min_err != nil {
-		panic(fmt.Sprintf("config topic partition error: %s", this.Source.Topic.Partitions))
-	}
-
-	max, max_err := strconv.Atoi(ss[1])
-	if max_err != nil {
-		panic(fmt.Sprintf("config topic partition error: %s", this.Source.Topic.Partitions))
-	}
-
-	if max < min {
-		panic(fmt.Sprintf("config topic partition error: %s", this.Source.Topic.Partitions))
-	}
-
-	return int32(min), int32(max)
-}
-
 func (this *xmlConfig) Check() bool {
-	if this.GetDestinationName() != "" {
-		return true
+	uniq := make(map[int32]struct{})
+	for _, info := range this.Source.Topic.Partitions.Infos {
+		if _, exist := uniq[info.Index]; exist {
+			return false
+		}
+		uniq[info.Index] = struct{}{}
 	}
-	return false
+	if this.GetDestinationName() == "" {
+		return false
+	}
+	return true
 }
 
 //*********************************************************************************/

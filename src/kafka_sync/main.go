@@ -61,8 +61,6 @@ func main() {
 	gldb = ldb
 	defer gldb.Close()
 
-	index, MaxPartition := config.SplitSourceTopicPartition()
-
 	sarama.Logger = log.New(os.Stdout, "[Ivan] ", log.LstdFlags)
 
 	sm := NewSyncManager()
@@ -75,13 +73,12 @@ func main() {
 	sm.RegisterSync(config.Destination.Hbase.Name, NewSyncMyHbase)
 	/*****************************************************/
 
-	sm.AddWaitGroup(int(MaxPartition - index + 1))
+	sm.AddWaitGroup(len(config.Source.Topic.Partitions.Infos))
 
-	l4g.Debug("partition: %d %d", index, MaxPartition)
+	l4g.Debug("config %v", config)
 
-	for index <= MaxPartition {
-		sm.Create(config, index)
-		index++
+	for _, info := range config.Source.Topic.Partitions.Infos {
+		sm.Create(config, info.Index, info.Offset)
 	}
 
 	go RedisService(config, sm)

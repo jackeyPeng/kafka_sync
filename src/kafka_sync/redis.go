@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net"
+	"strconv"
 
 	"github.com/ivanabc/radix/redis"
 	"github.com/ivanabc/radix/redis/resp"
@@ -45,7 +46,7 @@ func RedisProcess(rw net.Conn, config *xmlConfig, sm *SyncManager) {
 
 	for {
 		reply := client.ReadReply()
-		infos, err := reply.Hash()
+		infos, err := reply.List()
 		if err != nil {
 			l4g.Error("redis parse reply error: %s", err.Error())
 			return
@@ -53,22 +54,30 @@ func RedisProcess(rw net.Conn, config *xmlConfig, sm *SyncManager) {
 
 		l4g.Info("redis msg: %v", infos)
 
-		v := infos["info"]
-		if v == "offset" {
+		if len(infos) == 0 {
+			l4g.Error("redis parse reply len error")
+			return
+		}
+
+		key := infos[0]
+		if key == "info" {
 			//ABOUT OFFSET
+			if len(infos) < 2 {
+				l4g.Error("redis parse get reply len error")
+				return
+			}
 			ret := make(map[int32]string)
 			skafka := &SourceKafka{
 				config: &config.Source,
 			}
-			skafka.Init(nil, false)
-			index, MaxPartition := config.SplitSourceTopicPartition()
-			for index <= MaxPartition {
-				skafka.PartitionIndex = index
+			skafka.Init(nil, false, 0)
+			for _, value := range infos[1:] {
+				index, _ := strconv.Atoi(value)
+				skafka.PartitionIndex = int32(index)
 				syn := sm.CreateSync(skafka, config)
 				oldest, newest := skafka.GetKafkaOffset()
 				current, _ := skafka.GetLevelDBOffset(syn.GetLevelDBKey())
-				ret[index] = fmt.Sprintf("%d_%d_%d", oldest, current, newest-1)
-				index++
+				ret[int32(index)] = fmt.Sprintf("%d_%d_%d", oldest, current, newest-1)
 			}
 			skafka.Close()
 			if err := resp.WriteArbitraryAsFlattenedStrings(rw, ret); err != nil {

@@ -14,6 +14,10 @@ type LevelDB struct {
 	db       *levigo.DB
 }
 
+// 创建自定义的leveldb结构体
+// @param conf - 初始化LevelDB需要的配置信息
+// @return *LevelDB - 当创建操作失败的时候返回nil
+// @return error - 创建失败时候包含错误信息
 func NewLevelDB(conf *xmlConfig) (*LevelDB, error) {
 	name := conf.LevelDB.Dir
 	options := levigo.NewOptions()

@@ -53,7 +53,7 @@ func (this *SyncManager) Close() {
 	}
 }
 
-func (this *SyncManager) Create(cfg *xmlConfig, index int32) {
+func (this *SyncManager) Create(cfg *xmlConfig, index int32, offset int64) {
 	go func() {
 		defer func() {
 			this.wg.Done()
@@ -65,7 +65,7 @@ func (this *SyncManager) Create(cfg *xmlConfig, index int32) {
 		}
 		syn := this.CreateSync(skafka, cfg)
 		if syn != nil {
-			skafka.Init(syn.GetLevelDBKey(), true)
+			skafka.Init(syn.GetLevelDBKey(), true, offset)
 			syn.Process(this.CloseChan)
 			defer syn.Close()
 		}
@@ -94,7 +94,7 @@ func (this *SourceKafka) Topic() string {
 	return this.config.Topic.Id
 }
 
-func (this *SourceKafka) Init(leveldbKey []byte, initConsumer bool) bool {
+func (this *SourceKafka) Init(leveldbKey []byte, initConsumer bool, configOffset int64) bool {
 	topic := this.Topic()
 	consumer_config := sarama.NewConfig()
 	consumer_config.Consumer.Fetch.Default = this.config.ConsumerFetchSize
@@ -125,6 +125,11 @@ func (this *SourceKafka) Init(leveldbKey []byte, initConsumer bool) bool {
 	if err != nil {
 		l4g.Error("get leveldb key error: %s %s", leveldbKey, err.Error())
 		return false
+	}
+	if offset < configOffset {
+		offset = configOffset
+	} else {
+		offset++
 	}
 	l4g.Info("consume offset: %s %d %d", topic, this.PartitionIndex, offset)
 
@@ -177,9 +182,9 @@ func (this *SourceKafka) GetLevelDBOffset(key []byte) (int64, error) {
 
 	var offset int64
 	if len(ret) > 0 {
-		offset, _ = strconv.ParseInt(string(ret), 10, 64)
+		offset, err = strconv.ParseInt(string(ret), 10, 64)
 	} else {
-		offset = sarama.OffsetNewest
+		offset = sarama.OffsetOldest
 	}
-	return offset, nil
+	return offset, err
 }
