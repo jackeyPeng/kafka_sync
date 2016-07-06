@@ -131,7 +131,9 @@ func (this *SourceKafka) Init(leveldbKey []byte, initConsumer bool, configOffset
 	} else {
 		offset++
 	}
-	l4g.Info("consume offset: %s %d %d", topic, this.PartitionIndex, offset)
+	//l4g.Info("consume offset: %s %d %d", topic, this.PartitionIndex, offset)
+	l, n := this.GetKafkaOffset()
+	l4g.Info("consume offset: %s %d %d %d %d", topic, this.PartitionIndex, offset, l, n)
 
 	//init partition consumer
 	partitionConsumer, err := consumer.ConsumePartition(topic, this.PartitionIndex, offset)

@@ -93,6 +93,7 @@ type xmlDestinationHbase struct {
 	State string `xml:"state,attr"`
 	Name  string `xml:"name"`
 
+	TimeOut     int    `xml:"timeout"`
 	Brokers     string `xml:"brokers"`
 	Table       []byte `xml:"table"`
 	Family      []byte `xml:"family"`

@@ -3,7 +3,7 @@
   <source>
     <brokers>10.5.2.11:9092,10.5.2.12:9092,10.5.2.13:9092</brokers>
     <topic>
-      <id></id>
+      <id>snsgz</id>
       <partitions>
         <partition index="0">-1</partition>
         <partition index="1">-1</partition>
@@ -53,21 +53,22 @@
     <dir>../data</dir>
   </leveldb>
   <destination>
-    <kafka state="open">
+    <kafka state="close">
       <name>kafka</name>
       <brokers>10.5.2.11:9092,10.5.2.12:9092,10.5.2.13:9092</brokers>
       <topic></topic>
       <producer_flush_size>4096</producer_flush_size>
       <producer_flush_frequency>10</producer_flush_frequency> <!-- ms -->
     </kafka>
-    <hbase state="close">
+    <hbase state="open">
       <name>hbase</name>
-      <brokers></brokers>
-      <table></table>
-      <family></family>
+      <timeout>120</timeout>
+      <brokers>10.2.96.32:9090,10.2.96.33:9090,10.2.96.34:9090,10.2.96.35:9090,10.2.96.44:9090</brokers>
+      <table>snsgz_log</table>
+      <family>info</family>
       <qualifier></qualifier>
-      <max_merge_msg></max_merge_msg>
-      <filter></filter>
+      <max_merge_msg>512</max_merge_msg>
+      <filter>207231</filter>
     </hbase>
   </destination>
 </config>

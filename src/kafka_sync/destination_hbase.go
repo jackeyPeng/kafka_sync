@@ -41,7 +41,7 @@ func (this *SyncHbase) GetLevelDBKey() []byte {
 }
 
 func (this *SyncHbase) Process(cc <-chan struct{}) {
-	socket, err := thrift.NewTSocket(this.thriftAddr)
+	socket, err := thrift.NewTSocketTimeout(this.thriftAddr, time.Duration(this.config.TimeOut)*time.Second)
 	if err != nil {
 		l4g.Error("connect hbase proxy error: %s %s", this.thriftAddr, err.Error())
 		return
