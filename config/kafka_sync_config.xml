@@ -69,6 +69,7 @@
       <qualifier></qualifier>
       <max_merge_msg>512</max_merge_msg>
       <filter>207231</filter>
+      <write_rate>1024</write_rate>
     </hbase>
   </destination>
 </config>

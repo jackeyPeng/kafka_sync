@@ -58,19 +58,17 @@ func (this *SyncHbase) Process(cc <-chan struct{}) {
 	offset, _ := this.src.GetLevelDBOffset(this.leveldbKey)
 	l4g.Debug("sync hbase leveldb offset: %s %s %d", this.thriftAddr, this.leveldbKey, offset)
 	ticker_hbase := time.NewTicker(10 * time.Second)
-	ticker := time.NewTicker(time.Minute)
 	tps := make([]*hbase.TPut, 0, this.config.MaxMergeMsg)
 	var count int
 	var lastPutCount, putCount int64
+	var writeRate int
+	var tickerCount int
 
 	for {
 		select {
 		case <-cc:
 			l4g.Info("manager hbase close %d", this.src.PartitionIndex)
 			return
-		case <-ticker.C:
-			l4g.Info("consume offset: %s %d %d", this.src.Topic(), this.src.PartitionIndex, putCount-lastPutCount)
-			lastPutCount = putCount
 		case err := <-this.src.PartitionConsumer.Errors():
 			if kerr, ok := err.Err.(sarama.KError); ok && kerr == sarama.ErrOffsetOutOfRange {
 				l4g.Error("partition consumer (%s %d) return error: %s", this.src.Topic(), this.src.PartitionIndex, err.Error())
@@ -78,6 +76,7 @@ func (this *SyncHbase) Process(cc <-chan struct{}) {
 			return
 		case msg := <-this.src.PartitionConsumer.Messages():
 			offset = msg.Offset
+			writeRate++
 			key := this.RowKey(msg.Value)
 			if key != "" {
 				tps = append(tps, this.EncodeTPut([]byte(key), msg.Value))
@@ -94,8 +93,21 @@ func (this *SyncHbase) Process(cc <-chan struct{}) {
 				}
 				count = 0
 				tps = tps[0:0]
+			} else if writeRate == this.config.WriteRate {
+				if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(offset, 10))); err != nil {
+					l4g.Error("leveldb put %s %d error: %s", this.leveldbKey, offset, err.Error())
+					return
+				}
+				writeRate = 0
 			}
 		case <-ticker_hbase.C:
+			tickerCount++
+			if tickerCount == 6 {
+				tickerCount = 0
+				l4g.Info("consume offset: %s %d %d", this.src.Topic(), this.src.PartitionIndex, putCount-lastPutCount)
+				lastPutCount = putCount
+			}
+
 			if count > 0 {
 				if !this.PutHbase(tt, tps, offset) {
 					return

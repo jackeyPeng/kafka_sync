@@ -100,6 +100,7 @@ type xmlDestinationHbase struct {
 	Qualifier   []byte `xml:"qualifier"`
 	MaxMergeMsg int    `xml:"max_merge_msg"`
 	Filter      string `xml:"filter"`
+	WriteRate   int    `xml:"write_rate"`
 }
 
 func (this *xmlDestinationHbase) GetRandomAddr() string {
