@@ -60,7 +60,28 @@ func RedisProcess(rw net.Conn, config *xmlConfig, sm *SyncManager) {
 		}
 
 		key := infos[0]
-		if key == "offset" {
+		if key == "local" {
+			if len(infos) < 2 {
+				l4g.Error("redis parse get reply len error")
+				return
+			}
+			ret := make(map[int32]int64)
+			skafka := &SourceKafka{
+				config: &config.Source,
+			}
+			skafka.Init(nil, false, 0)
+			for _, value := range infos[1:] {
+				index, _ := strconv.Atoi(value)
+				skafka.PartitionIndex = int32(index)
+				syn := sm.CreateSync(skafka, config)
+				current, _ := skafka.GetLevelDBOffset(syn.GetLevelDBKey())
+				ret[int32(index)] = current
+			}
+			skafka.Close()
+			if err := resp.WriteArbitraryAsFlattenedStrings(rw, ret); err != nil {
+				l4g.Error("write msg error: %s %v", err.Error(), ret)
+			}
+		} else if key == "offset" {
 			ret := make(map[int32]string)
 			skafka := &SourceKafka{
 				config: &config.Source,

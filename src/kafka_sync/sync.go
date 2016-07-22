@@ -126,9 +126,12 @@ func (this *SourceKafka) Init(leveldbKey []byte, initConsumer bool, configOffset
 		l4g.Error("get leveldb key error: %s %s", leveldbKey, err.Error())
 		return false
 	}
-	if offset < configOffset {
+	if offset < 0 {
 		offset = configOffset
 	} else {
+		if offset < configOffset {
+			offset = configOffset
+		}
 		offset++
 	}
 	//l4g.Info("consume offset: %s %d %d", topic, this.PartitionIndex, offset)
