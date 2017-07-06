@@ -126,7 +126,6 @@ func RedisProcess(rw net.Conn, config *xmlConfig, sm *SyncManager) {
 			if err := client.WriteByte([]byte("-param error\r\n")); err != nil {
 				l4g.Error("redis write error: %s", err.Error())
 			}
-			return
 		}
 	}
 }

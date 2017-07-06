@@ -71,6 +71,8 @@ func main() {
 	sm.RegisterSync(config.Destination.Kafka.Name, NewSyncKafka)
 	//register hbase
 	sm.RegisterSync(config.Destination.Hbase.Name, NewSyncMyHbase)
+	//register redis
+	sm.RegisterSync(config.Destination.Redis.Name, NewSyncRedis)
 	/*****************************************************/
 
 	sm.AddWaitGroup(len(config.Source.Topic.Partitions.Infos))

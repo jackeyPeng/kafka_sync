@@ -101,17 +101,17 @@ func (this *SyncKafka) Process(cc <-chan struct{}) {
 func (this *SyncKafka) Close() {
 	if this.producer != nil {
 		this.producer.AsyncClose()
-    for more := true; more; {
-      select {
-      case msg := <- this.producer.Successes():
-        if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(msg.Metadata.(int64), 10))); err != nil {
-          l4g.Error("leveldb put (%s %d %d) error: %s", this.config.Topic, this.src.PartitionIndex, msg.Metadata.(int64), err.Error())
-        }
-        l4g.Debug("write %s %d offset: %d", this.config.Topic, this.src.PartitionIndex, msg.Metadata.(int64))
-      default:
-        more = false
-      }
-    }
+		for more := true; more; {
+			select {
+			case msg := <-this.producer.Successes():
+				if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(msg.Metadata.(int64), 10))); err != nil {
+					l4g.Error("leveldb put (%s %d %d) error: %s", this.config.Topic, this.src.PartitionIndex, msg.Metadata.(int64), err.Error())
+				}
+				l4g.Debug("write %s %d offset: %d", this.config.Topic, this.src.PartitionIndex, msg.Metadata.(int64))
+			default:
+				more = false
+			}
+		}
 		l4g.Info("producer close: %s %d", this.config.Topic, this.src.PartitionIndex)
 	}
 }

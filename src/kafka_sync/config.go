@@ -68,6 +68,10 @@ func (this *xmlConfig) GetDestinationName() string {
 	if this.Destination.Hbase.State == "open" {
 		return this.Destination.Hbase.Name
 	}
+	//redis
+	if this.Destination.Redis.State == "open" {
+		return this.Destination.Redis.Name
+	}
 	//...
 	return ""
 }
@@ -75,6 +79,7 @@ func (this *xmlConfig) GetDestinationName() string {
 type xmlDestination struct {
 	Kafka xmlDestinationKafka `xml:"kafka"`
 	Hbase xmlDestinationHbase `xml:"hbase"`
+	Redis xmlDestinationRedis `xml:"redis"`
 }
 
 //kafka config
@@ -106,4 +111,15 @@ type xmlDestinationHbase struct {
 func (this *xmlDestinationHbase) GetRandomAddr() string {
 	ss := strings.Split(this.Brokers, ",")
 	return ss[rand.Intn(len(ss))]
+}
+
+//redis config
+type xmlDestinationRedis struct {
+	State string `xml:"state,attr"`
+	Name  string `xml:"name"`
+
+	TimeOut     int    `xml:"timeout"`
+	NetAddr     string `xml:"net_addr"`
+	MaxMergeMsg int    `xml:"max_merge_msg"`
+	WriteRate   int    `xml:"write_rate"`
 }

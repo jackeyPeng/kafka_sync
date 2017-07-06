@@ -60,7 +60,7 @@
       <producer_flush_size>4096</producer_flush_size>
       <producer_flush_frequency>10</producer_flush_frequency> <!-- ms -->
     </kafka>
-    <hbase state="open">
+    <hbase state="close">
       <name>hbase</name>
       <timeout>120</timeout>
       <brokers>10.2.96.32:9090,10.2.96.33:9090,10.2.96.34:9090,10.2.96.35:9090,10.2.96.44:9090</brokers>
@@ -71,5 +71,12 @@
       <filter>207231</filter>
       <write_rate>1024</write_rate>
     </hbase>
+    <redis state="open">
+      <name>redis</name>
+      <timeout>120</timeout>
+      <net_addr></net_addr>
+      <max_merge_msg>512</max_merge_msg>
+      <write_rate>1024</write_rate>
+    </redis>
   </destination>
 </config>

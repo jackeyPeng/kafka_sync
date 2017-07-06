@@ -169,7 +169,7 @@ func (this *SourceKafka) Close() {
 		if err := this.ConsumerClient.Close(); err != nil {
 			l4g.Error("close client error: %s %d %s", this.Topic(), this.PartitionIndex, err.Error())
 		}
-    l4g.Info("consumer client close: %s %d", this.Topic(), this.PartitionIndex)
+		l4g.Info("consumer client close: %s %d", this.Topic(), this.PartitionIndex)
 	}
 }
 
