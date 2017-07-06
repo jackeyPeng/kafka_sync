@@ -48,3 +48,4 @@ cd ${DIR}
 echo "go get..."
 go get github.com/Shopify/sarama
 go get github.com/ivanabc/radix/redis
+tar -xjf deps/thrift.tar.bz2
