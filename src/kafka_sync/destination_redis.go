@@ -58,29 +58,40 @@ func (this *SyncRedis) Process(cc <-chan struct{}) {
 			}
 			return
 		case msg := <-this.src.PartitionConsumer.Messages():
+			offset = msg.Offset
 			value := string(msg.Value)
 			name, key := this.GetRedisNameAndKey(value)
 			if name != "" {
-				r := client.Cmd("hmset", name, key, value)
-				if r.Err != nil {
-					l4g.Error("redis hmset op error: %s", r.Err.Error())
-					return
-				}
-				offset = msg.Offset
+				client.Append("hmset", name, key, value)
 				writeRate++
 				count++
 				putCount++
+
 				if count == this.config.MaxMergeMsg {
+					for i := 0; i < count; i++ {
+						if r := client.GetReply(); r.Err != nil {
+							l4g.Error("redis hmset op error: %s", r.Err.Error())
+							return
+						}
+					}
 					if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(offset, 10))); err != nil {
 						l4g.Error("leveldb put %s %d error: %s", this.leveldbKey, offset, err.Error())
 						return
 					}
 					count = 0
 				} else if writeRate == this.config.WriteRate {
+					for i := 0; i < count; i++ {
+						if r := client.GetReply(); r.Err != nil {
+							l4g.Error("redis hmset op error: %s", r.Err.Error())
+							return
+						}
+					}
+
 					if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(offset, 10))); err != nil {
 						l4g.Error("leveldb put %s %d error: %s", this.leveldbKey, offset, err.Error())
 						return
 					}
+					count = 0
 					writeRate = 0
 				}
 			}
@@ -92,10 +103,17 @@ func (this *SyncRedis) Process(cc <-chan struct{}) {
 				lastPutCount = putCount
 			}
 
+			for i := 0; i < count; i++ {
+				if r := client.GetReply(); r.Err != nil {
+					l4g.Error("redis hmset op error: %s", r.Err.Error())
+					return
+				}
+			}
 			if err := gldb.Put(this.leveldbKey, []byte(strconv.FormatInt(offset, 10))); err != nil {
 				l4g.Error("leveldb put %s %d error: %s", this.leveldbKey, offset, err.Error())
 				return
 			}
+			count = 0
 		}
 	}
 }
