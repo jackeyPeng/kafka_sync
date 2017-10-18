@@ -118,6 +118,7 @@ type xmlDestinationRedis struct {
 	State string `xml:"state,attr"`
 	Name  string `xml:"name"`
 
+	LogType     string `xml:"log_type"`
 	TimeOut     int    `xml:"timeout"`
 	NetAddr     string `xml:"net_addr"`
 	MaxMergeMsg int    `xml:"max_merge_msg"`

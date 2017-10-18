@@ -73,6 +73,7 @@
     </hbase>
     <redis state="open">
       <name>redis</name>
+      <log_type>sx</log_type>
       <timeout>120</timeout>
       <net_addr></net_addr>
       <max_merge_msg>512</max_merge_msg>
